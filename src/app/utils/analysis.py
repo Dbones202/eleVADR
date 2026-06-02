@@ -27,6 +27,37 @@ from .utils import (
 )
 
 
+def _convert_json_to_parquet(json_path: Path, parquet_path: Path) -> None:
+    """Convert a port-keyed JSON file into a Parquet dataset."""
+    with open(json_path) as f:
+        raw_data = json.load(f)
+
+    processed_ports_data = {}
+
+    for key, value in raw_data.items():
+        try:
+            if "-" in key:
+                start_port, end_port = map(int, key.split("-"))
+                for port_num in range(start_port, end_port + 1):
+                    processed_ports_data[port_num] = value
+            else:
+                processed_ports_data[int(key)] = value
+        except ValueError, TypeError:
+            continue
+
+    records = []
+    for port_num, data in processed_ports_data.items():
+        record = {"port": port_num}
+        if isinstance(data, dict):
+            record.update(data)
+        records.append(record)
+
+    df = pd.DataFrame(records)
+    if not df.empty:
+        df["port"] = df["port"].astype(int)
+        df.to_parquet(parquet_path, engine="pyarrow", compression="snappy")
+
+
 class PcapParser:
     """Process PCAP files using Zeek and create traffic dataframe."""
 
@@ -530,7 +561,24 @@ class Analyzer:
         for attr_name, filename in parquet_files.items():
             if self.file_path_info.path_to_assessor_data is None:
                 raise ValueError("path_to_assessor_data must be provided.")
-            file_path = Path(self.file_path_info.path_to_assessor_data) / filename
+
+            assessor_dir = Path(self.file_path_info.path_to_assessor_data)
+            file_path = assessor_dir / filename
+
+            # Auto-generate parquet if missing
+            if not file_path.exists():
+                source_json = None
+                if filename == "ports.parquet":
+                    source_json = assessor_dir / "ports.json"
+                elif filename == "port_risk_v2.parquet":
+                    # Try v3 first, then v2
+                    source_json = assessor_dir / "port_risk_v3.json"
+                    if not source_json.exists():
+                        source_json = assessor_dir / "port_risk_v2.json"
+
+                if source_json and source_json.exists():
+                    _convert_json_to_parquet(source_json, file_path)
+
             try:
                 setattr(self, attr_name, pd.read_parquet(file_path, engine="pyarrow"))
             except Exception as e:

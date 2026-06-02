@@ -196,5 +196,8 @@ zeeks/
 # AI
 claude.md
 
+# Graphify knowledge graph artifacts
+graphify-out/
+
 .devcontainer/certs/*
 !.devcontainer/certs/.gitkeep

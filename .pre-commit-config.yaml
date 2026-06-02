@@ -143,7 +143,7 @@ repos:
       - id: deptry
         args:
           - --per-rule-ignores
-          - DEP002=uvicorn,DEP001=app
+          - DEP002=uvicorn|python-multipart|pyarrow,DEP001=app,DEP003=app
 
   # General checks (commits, spelling)
   - repo: https://github.com/compilerla/conventional-pre-commit

@@ -656,7 +656,7 @@ if __name__ == "__main__":
     argument_parser.add_argument(
         "--project-root",
         type=str,
-        default=os.getcwd(),
+        default=str(Path(__file__).resolve().parent),
         help="Project root directory (default: parent of main.py)",
     )
 
@@ -667,7 +667,9 @@ if __name__ == "__main__":
         sys.exit(1)
 
     try:
-        run_analysis(args.pcap, args.output, args.project_root)
+        report = run_analysis(args.pcap, args.output, args.project_root)
+        if not args.output:
+            print(json.dumps(report, indent=4))
     except Exception as e:
         logger.error(f"Error during analysis: {e}")
         logger.error("Traceback:\n%s", traceback.format_exc())
